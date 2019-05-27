@@ -3,8 +3,11 @@
 from requests import get
 import const
 from bs4 import BeautifulSoup
+import logging
 import pandas as pd
 import urllib.parse as urlparse
+
+logging.basicConfig(level=logging.INFO)
 
 
 def get_data():
@@ -21,8 +24,9 @@ def get_data():
         category = urlparse.parse_qs(parsed.query)['title_type'][0]
         subcategory = urlparse.parse_qs(parsed.query)['genres'][0]
         for row in data:
-            row.update({"category": category, 'subcategory': subcategory})
+            row.update({'category': category, 'subcategory': subcategory})
         whole_data.extend(data)
+    logging.info("Gathered all data from IMDB URLs")
 
     for url in const.STEAM_URLS:
         # Get data about items using BeautifulSoup
@@ -30,22 +34,26 @@ def get_data():
         data = steam_data_getter(page)
         # Set category and parse subcategory from URL
         category = 'game'
-        subcategory = url.split("/")[-2].lower()
+        subcategory = url.split('/')[-2].lower()
         for row in data:
-            row.update({"category": category, 'subcategory': subcategory})
+            row.update({'category': category, 'subcategory': subcategory})
         whole_data.extend(data)
+    logging.info("Gathered all data from STEAM URLs")
+
     # Put data into pandas DataFrame, clean-up and save to csv
     df = pd.DataFrame(whole_data)
     df = df.replace('feature', 'movie')
     df = df.replace('tv_series,mini_series', 'tv_series')
     df = df.replace('Free%20to%20Play', 'free%20to%20play')
-    df.to_csv('results.csv', encoding='utf-8')
+    df.to_csv('results.csv')
+    logging.info("Data saved to CSV file")
 
 
 def response_getter(request):
     response = get(request, headers={'Accept-Language': 'en-US, en'})
     if response.status_code != 200:
-        print('Request: {}; Status code: {}'.format(request, response.status_code))
+        logging.error('Request error: {}, status code: {}'.format(request, response.status_code))
+    logging.info("Data gathered for request: {}".format(request))
     return BeautifulSoup(response.text, 'html.parser')
 
 
